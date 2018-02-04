@@ -26,7 +26,7 @@ if(isset($_GET["pdf"]) && isset($_GET['order_id']))
 	foreach($result as $row)
 	{
 		$output .= '
-		<table width="100%" border="1" cellpadding="5" cellspacing="0">
+		<table width="100%" border="0.1" cellpadding="0" cellspacing="0" style="font-size: 11px;">
 			<tr>
 				<td colspan="2" align="center" style="font-size:18px"><b>Invoice</b></td>
 			</tr>
@@ -52,16 +52,26 @@ if(isset($_GET["pdf"]) && isset($_GET['order_id']))
 					<tr>
 						<th rowspan="2">Sr No.</th>
 						<th rowspan="2">Product</th>
-						<th rowspan="2">Quantity</th>
+						<th rowspan="2">Desc</th>
+						<th rowspan="2">Batch No</th>
+						<th rowspan="2">HSN</th>
+						<th rowspan="2">Exp</th>
+						<th rowspan="2">Qty</th>
 						<th rowspan="2">Price</th>
+						<th rowspan="2">Dis (%)</th>
 						<th rowspan="2">Actual Amt.</th>
-						<th colspan="2">Tax (%)</th>
+						<th rowspan="2">Taxable Total</th>
+						<th colspan="2">SGST (%)</th>
+						<th colspan="2">CGST (%)</th>
 						<th rowspan="2">Total</th>
 					</tr>
 					<tr>
 						<th>Rate</th>
 						<th>Amt.</th>
+						<th>Rate</th>
+						<th>Amt.</th>
 					</tr>
+					
 		';
 		$statement = $connect->prepare("
 			SELECT * FROM inventory_order_product 
@@ -76,36 +86,51 @@ if(isset($_GET["pdf"]) && isset($_GET['order_id']))
 		$count = 0;
 		$total = 0;
 		$total_actual_amount = 0;
+		$total_taxable_amount = 0;
 		$total_tax_amount = 0;
 		foreach($product_result as $sub_row)
 		{
 			$count = $count + 1;
 			$product_data = fetch_product_details($sub_row['product_id'], $connect);
 			$actual_amount = $sub_row["quantity"] * $sub_row["price"];
-			$tax_amount = ($actual_amount * $sub_row["discount"])/100;
-			$total_product_amount = $actual_amount + $tax_amount;
+			$discount_amount = ($actual_amount * $sub_row["discount"])/100;
+			$total_product_amount = $actual_amount - $discount_amount;
+			$tax_amount = ($total_product_amount * $sub_row["sgst"])/100;
 			$total_actual_amount = $total_actual_amount + $actual_amount;
+			$total_product_amount_tax = $total_product_amount + $tax_amount;
+			$total_taxable_amount = $total_taxable_amount + $total_product_amount;
 			$total_tax_amount = $total_tax_amount + $tax_amount;
-			$total = $total + $total_product_amount;
+			$total = $total + $total_product_amount_tax;
 			$output .= '
 				<tr>
 					<td>'.$count.'</td>
 					<td>'.$product_data['product_name'].'</td>
+					<td>'.$product_data['product_description'].'</td>
+					<td>'.$product_data['batch_no'].'</td>
+					<td>'.$product_data['hsn'].'</td>
+					<td>'.$product_data['expiry_date'].'</td>
 					<td>'.$sub_row["quantity"].'</td>
 					<td aling="right">'.$sub_row["price"].'</td>
-					<td align="right">'.number_format($actual_amount, 2).'</td>
-					<td>'.$sub_row["discount"].'%</td>
-					<td align="right">'.number_format($tax_amount, 2).'</td>
+					<td aling="right">'.$sub_row["discount"].'</td>
+					<td aling="right">'.number_format($actual_amount, 2).'</td>
 					<td align="right">'.number_format($total_product_amount, 2).'</td>
+					<td>'.$sub_row["sgst"].'%</td>
+					<td align="right">'.number_format($tax_amount, 2).'</td>
+					<td>'.$sub_row["cgst"].'%</td>
+					<td align="right">'.number_format($tax_amount, 2).'</td>
+					<td align="right">'.number_format($total_product_amount_tax, 2).'</td>
 				</tr>
 			';
 		}
 		$output .= '
 		<tr>
-			<td align="right" colspan="4"><b>Total</b></td>
+			<td align="right" colspan="9"><b>Total</b></td>
 			<td align="right"><b>'.number_format($total_actual_amount, 2).'</b></td>
+			<td align="right"><b>'.number_format($total_taxable_amount, 2).'</b></td>
 			<td>&nbsp;</td>
-			<td align="right"><b>'.number_format($total_tax_amount, 2).'</b></td>
+			<td align="right" colspan="1"><b>'.number_format($total_tax_amount, 2).'</b></td>
+			<td>&nbsp;</td>
+			<td align="right" colspan="1"><b>'.number_format($total_tax_amount, 2).'</b></td>
 			<td align="right"><b>'.number_format($total, 2).'</b></td>
 		</tr>
 		';

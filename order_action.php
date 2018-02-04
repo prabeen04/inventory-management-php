@@ -34,12 +34,15 @@ if(isset($_POST['btn_action']))
 		if(isset($inventory_order_id))
 		{
 			$total_amount = 0;
+			//$taxable_amount = 0;
 			for($count = 0; $count<count($_POST["product_id"]); $count++)
 			{
 				$product_details = fetch_product_details($_POST["product_id"][$count], $connect);
 				$sub_query = "
-				INSERT INTO inventory_order_product (inventory_order_id, product_id, quantity, price, discount, sgst, cgst) 
-				VALUES (:inventory_order_id, :product_id, :quantity, :price, :discount, :sgst, :cgst)
+				INSERT INTO inventory_order_product (inventory_order_id, product_id, quantity, price, 
+				product_description, batch_no, hsn, expiry_date, discount, sgst, cgst) 
+				VALUES (:inventory_order_id, :product_id, :quantity, :price,
+				:product_description, :batch_no, :hsn, :expiry_date, :discount, :sgst, :cgst)
 				";
 				$statement = $connect->prepare($sub_query);
 				$statement->execute(
@@ -48,6 +51,10 @@ if(isset($_POST['btn_action']))
 						':product_id'			=>	$_POST["product_id"][$count],
 						':quantity'				=>	$_POST["quantity"][$count],
 						':price'				=>	$product_details['price'],
+						':product_description'	=>	$product_details['product_description'],
+						':batch_no'				=>	$product_details['batch_no'],
+						':hsn'				    =>	$product_details['hsn'],
+						':expiry_date'			=>	$product_details['expiry_date'],
 						':discount'				=>	$product_details['discount'],
 						':sgst'					=>	$product_details['sgst'],
 						':cgst'					=>	$product_details['cgst']
@@ -66,7 +73,9 @@ if(isset($_POST['btn_action']))
 				$statement->execute();
 				$base_price = $product_details['price'] * $_POST["quantity"][$count];
 				$tax = ($base_price/100)*$product_details['discount'];
-				$total_amount = $total_amount + ($base_price + $tax);
+				$taxable_amount = $base_price -  $tax ;				
+				$sgst_tax = ($taxable_amount/100)*$product_details['sgst'];
+				$total_amount = $total_amount+ ($taxable_amount +  $sgst_tax);
 			}
 			$update_query = "
 			UPDATE inventory_order 
@@ -161,6 +170,20 @@ if(isset($_POST['btn_action']))
 
 	if($_POST['btn_action'] == 'Edit')
 	{
+		$sub_query = "
+		SELECT * FROM inventory_order_product 
+		WHERE inventory_order_id = '".$_POST["inventory_order_id"]."'
+		";
+		$statement = $connect->prepare($sub_query);
+		$statement->execute();
+		$sub_result = $statement->fetchAll();
+		$existing_quantity = '';
+		// ".$existing_quantity."
+		foreach($sub_result as $sub_row)
+		{
+			$existing_quantity = $sub_row['quantity'];
+			echo "<script>alert('hiii')</script>";
+		}
 		$delete_query = "
 		DELETE FROM inventory_order_product 
 		WHERE inventory_order_id = '".$_POST["inventory_order_id"]."'
@@ -190,6 +213,18 @@ if(isset($_POST['btn_action']))
 						':cgst'					=>	$product_details['cgst']
 					)
 				);
+
+				$remaining_quantity1 = available_product_quantity($connect, $_POST["product_id"][$count], $_POST["inventory_order_id"]);
+				$remaining_quantity = $remaining_quantity1 + $_POST["quantity"][$count];
+				echo "<script>alert(".$remaining_quantity.")</script>";				
+				$update_quantity = "
+				UPDATE product 
+				SET product_quantity = '".$remaining_quantity."' 
+				WHERE product_id = '".$_POST["product_id"][$count]."'
+				";
+				$statement = $connect->prepare($update_quantity);
+				$statement->execute();
+
 				$base_price = $product_details['price'] * $_POST["quantity"][$count];
 				$tax = ($base_price/100)*$product_details['discount'];
 				$total_amount = $total_amount + ($base_price + $tax);

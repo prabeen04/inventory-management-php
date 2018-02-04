@@ -97,6 +97,10 @@ function fetch_product_details($product_id, $connect)
 	{
 		$output['product_name'] = $row["product_name"];
 		$output['product_id'] = $row["product_id"];
+		$output['product_description'] = $row["product_description"];
+		$output['batch_no'] = $row["batch_no"];
+		$output['hsn'] = $row["hsn"];
+		$output['expiry_date'] = $row["expiry_date"];
 		$output['quantity'] = $row["product_quantity"];
 		$output['price'] = $row['product_base_price'];
 		$output['discount'] = $row['discount'];
@@ -122,14 +126,14 @@ function available_product_quantity($connect, $product_id, $inventory_order_id)
 	$result = $statement->fetchAll();
 	foreach($result as $row)
 	{
-		echo "<script>console.log(".$row['quantity'].")</script>";
+		//echo "<script>console.log(".$row['quantity'].")</script>";
 		$total = $row['quantity'];
 	}
 
 	//$total = 0;
 	
 	//	$total = $total + $result;
-		echo "<script>alert(".$total.")</script>";
+		//echo "<script>alert(".$total.")</script>";
 	$available_quantity = intval($product_data['quantity']) - intval($total);
 	if($available_quantity == 0)
 	{
